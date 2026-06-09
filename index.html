@@ -1,25 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Smart AI Chat Assistant</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Productivity Assistant</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
+
 <body>
 
 <div class="container">
-  <header>
-    <h1> Smart AI Assistant</h1>
-    <p>Ask anything, get instant answers</p>
-  </header>
 
-  <div id="chat-box"></div>
+<header>
+<h1> AI Productivity Assistant</h1>
 
-  <div class="input-area">
-    <input type="text" id="user-input" placeholder="Type your message...">
-    <button onclick="sendMessage()">Send</button>
-  </div>
+<div class="actions">
+<button id="themeBtn"></button>
+<button id="exportBtn"> Export</button>
+<button id="voiceBtn"></button>
+</div>
+
+</header>
+
+<div id="chat"></div>
+
+<div class="input-area">
+<textarea id="prompt" placeholder="Ask anything..."></textarea>
+<button id="sendBtn">Send</button>
+</div>
+
 </div>
 
 <script src="script.js"></script>
