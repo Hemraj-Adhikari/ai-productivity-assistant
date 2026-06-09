@@ -1,5 +1,6 @@
 // ============================================================
 //  AI Productivity Assistant — script.js
+//  Using Google Gemini API (Free Tier)
 //  Matches: #chat, #prompt, #sendBtn, #themeBtn, #exportBtn, #voiceBtn
 // ============================================================
 
@@ -12,10 +13,9 @@ const exportBtn = document.getElementById("exportBtn");
 const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
-const API_URL       = "https://api.anthropic.com/v1/messages";
-const API_KEY       = "YOUR_API_KEY_HERE"; // 🔑 Replace with your Anthropic API key
-const MODEL         = "claude-sonnet-4-20250514";
-const MAX_TOKENS    = 1024;
+const API_KEY       = "AIzaSyCdtRygwuTZwmCOl77MQgn6ChhVI9RCG30"; // 🔑 Paste your Gemini API key here
+const MODEL         = "gemini-1.5-flash";
+const API_URL       = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
 
 // ── State ────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── Welcome ──────────────────────────────────────────────────
 function addWelcomeMessage() {
   if (chat.querySelectorAll(".message-row").length === 0) {
-    addBotMessage("👋 Hi! I'm your AI Productivity Assistant. Ask me anything — I remember our conversation context.");
+    addBotMessage(" Hi! I'm your AI Productivity Assistant Design and Devloped By Hemraj Adhikari. Ask me anything — I remember our conversation context.");
   }
 }
 
@@ -57,7 +57,7 @@ async function sendMessage() {
   addUserMessage(message);
   prompt.value = "";
   autoResize();
-  await askClaude(message);
+  await askGemini(message);
 }
 
 sendBtn?.addEventListener("click", sendMessage);
@@ -76,29 +76,37 @@ function autoResize() {
   prompt.style.height = Math.min(prompt.scrollHeight, 140) + "px";
 }
 
-// ── Claude API ───────────────────────────────────────────────
-async function askClaude(message) {
+// ── Gemini API ───────────────────────────────────────────────
+async function askGemini(message) {
   isLoading = true;
   setSendState(false);
   showTyping();
 
-  conversationHistory.push({ role: "user", content: message });
+  // Add user message to history
+  conversationHistory.push({
+    role: "user",
+    parts: [{ text: message }]
+  });
+
+  // Build request body
+  const requestBody = {
+    system_instruction: {
+      parts: [{ text: SYSTEM_PROMPT }]
+    },
+    contents: conversationHistory,
+    generationConfig: {
+      maxOutputTokens: 1024,
+      temperature: 0.7,
+    }
+  };
 
   try {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "x-api-key": API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true"
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: SYSTEM_PROMPT,
-        messages: conversationHistory,
-      }),
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -107,8 +115,14 @@ async function askClaude(message) {
     }
 
     const data = await response.json();
-    const reply = data.content?.map((b) => b.text || "").join("") || "No response.";
-    conversationHistory.push({ role: "assistant", content: reply });
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+
+    // Add assistant reply to history
+    conversationHistory.push({
+      role: "model",
+      parts: [{ text: reply }]
+    });
+
     hideTyping();
     addBotMessage(reply);
     saveChatHistory();
