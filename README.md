@@ -1,4 +1,4 @@
-# task-manager
+# ai-productivity-assistant
  How to Use
 Open project in browser
 Add your daily tasks
