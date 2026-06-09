@@ -1,26 +1,21 @@
 // ============================================================
-//  Smart AI Chatbot — script.js
-//  Features: Claude API, markdown, voice input, chat history,
-//            export, theme toggle, typing indicator, multi-turn
+//  AI Productivity Assistant — script.js
+//  Matches: #chat, #prompt, #sendBtn, #themeBtn, #exportBtn, #voiceBtn
 // ============================================================
 
-// ── DOM References ──────────────────────────────────────────
-const chatBox       = document.getElementById("chat-box");
-const userInput     = document.getElementById("user-input");
-const sendBtn       = document.getElementById("send-btn");
-const voiceBtn      = document.getElementById("voice-btn");
-const exportBtn     = document.getElementById("export-btn");
-const clearBtn      = document.getElementById("clear-btn");
-const themeBtn      = document.getElementById("theme-btn");
-const typingEl      = document.getElementById("typing-indicator");
-const charCount     = document.getElementById("char-count");
+// ── DOM References ───────────────────────────────────────────
+const chat      = document.getElementById("chat");
+const prompt    = document.getElementById("prompt");
+const sendBtn   = document.getElementById("sendBtn");
+const themeBtn  = document.getElementById("themeBtn");
+const exportBtn = document.getElementById("exportBtn");
+const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
 const API_URL       = "https://api.anthropic.com/v1/messages";
 const MODEL         = "claude-sonnet-4-20250514";
 const MAX_TOKENS    = 1024;
-const MAX_CHARS     = 1000;
-const SYSTEM_PROMPT = "You are a helpful, friendly, and concise AI assistant. Format responses using markdown where helpful.";
+const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
 
 // ── State ────────────────────────────────────────────────────
 let conversationHistory = [];
@@ -31,18 +26,21 @@ let isDarkMode          = localStorage.getItem("theme") === "dark";
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme();
   loadChatHistory();
-  userInput.focus();
+  prompt.focus();
+  addWelcomeMessage();
 });
+
+// ── Welcome ──────────────────────────────────────────────────
+function addWelcomeMessage() {
+  if (chat.querySelectorAll(".message-row").length === 0) {
+    addBotMessage("👋 Hi! I'm your AI Productivity Assistant. Ask me anything — I remember our conversation context.");
+  }
+}
 
 // ── Theme ────────────────────────────────────────────────────
 function applyTheme() {
   document.body.classList.toggle("dark", isDarkMode);
-  if (themeBtn) {
-    themeBtn.innerHTML = isDarkMode
-      ? '<i class="ti ti-sun"></i>'
-      : '<i class="ti ti-moon"></i>';
-    themeBtn.title = isDarkMode ? "Switch to light mode" : "Switch to dark mode";
-  }
+  if (themeBtn) themeBtn.textContent = isDarkMode ? "☀️" : "🌙";
 }
 
 themeBtn?.addEventListener("click", () => {
@@ -51,36 +49,30 @@ themeBtn?.addEventListener("click", () => {
   applyTheme();
 });
 
-// ── Send Message ─────────────────────────────────────────────
+// ── Send ─────────────────────────────────────────────────────
 async function sendMessage() {
-  const message = userInput.value.trim();
+  const message = prompt.value.trim();
   if (!message || isLoading) return;
-
-  addMessage(message, "user");
-  userInput.value = "";
-  updateCharCount();
+  addUserMessage(message);
+  prompt.value = "";
+  autoResize();
   await askClaude(message);
 }
 
 sendBtn?.addEventListener("click", sendMessage);
 
-userInput?.addEventListener("keydown", (e) => {
+prompt?.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
 });
 
-userInput?.addEventListener("input", updateCharCount);
+prompt?.addEventListener("input", autoResize);
 
-function updateCharCount() {
-  const len = userInput.value.length;
-  if (charCount) {
-    charCount.textContent = `${len}/${MAX_CHARS}`;
-    charCount.style.color = len > MAX_CHARS * 0.9 ? "var(--color-danger)" : "var(--color-muted)";
-  }
-  userInput.style.height = "auto";
-  userInput.style.height = Math.min(userInput.scrollHeight, 120) + "px";
+function autoResize() {
+  prompt.style.height = "auto";
+  prompt.style.height = Math.min(prompt.scrollHeight, 140) + "px";
 }
 
 // ── Claude API ───────────────────────────────────────────────
@@ -109,161 +101,143 @@ async function askClaude(message) {
     }
 
     const data = await response.json();
-    const reply = data.content?.map((b) => b.text || "").join("") || "No response received.";
-
+    const reply = data.content?.map((b) => b.text || "").join("") || "No response.";
     conversationHistory.push({ role: "assistant", content: reply });
     hideTyping();
-    addMessage(reply, "bot");
+    addBotMessage(reply);
     saveChatHistory();
 
   } catch (error) {
     hideTyping();
-    addMessage(`⚠️ Error: ${error.message}`, "bot error");
+    addBotMessage(`⚠️ **Error:** ${error.message}`);
     conversationHistory.pop();
   } finally {
     isLoading = false;
     setSendState(true);
-    userInput.focus();
+    prompt.focus();
   }
 }
 
-// ── Message Rendering ────────────────────────────────────────
-function addMessage(text, type) {
-  const wrapper = document.createElement("div");
-  wrapper.classList.add("message-wrapper", type.includes("user") ? "user-wrapper" : "bot-wrapper");
-
-  const avatar = document.createElement("div");
-  avatar.classList.add("avatar");
-  avatar.innerHTML = type.includes("user")
-    ? '<i class="ti ti-user"></i>'
-    : '<i class="ti ti-robot"></i>';
+// ── Render Messages ──────────────────────────────────────────
+function addUserMessage(text) {
+  const row = document.createElement("div");
+  row.className = "message-row user-row";
 
   const bubble = document.createElement("div");
-  bubble.classList.add("message", type);
+  bubble.className = "message user-message";
+  bubble.textContent = text;
 
-  if (type.includes("bot")) {
-    bubble.innerHTML = typeof marked !== "undefined"
-      ? marked.parse(text)
-      : escapeHtml(text);
-  } else {
-    bubble.textContent = text;
-  }
+  const time = document.createElement("span");
+  time.className = "msg-time";
+  time.textContent = formatTime();
+  bubble.appendChild(time);
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar user-avatar";
+  avatar.textContent = "You";
+
+  row.appendChild(bubble);
+  row.appendChild(avatar);
+  chat.appendChild(row);
+  scrollToBottom();
+}
+
+function addBotMessage(text) {
+  const row = document.createElement("div");
+  row.className = "message-row bot-row";
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar bot-avatar";
+  avatar.textContent = "AI";
+
+  const wrap = document.createElement("div");
+  wrap.style.flex = "1";
+
+  const bubble = document.createElement("div");
+  bubble.className = "message bot-message";
+  bubble.innerHTML = marked.parse(text);
+
+  // Copy button
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.addEventListener("click", () => {
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = "Copied!";
+      setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
+    });
+  });
+
+  const time = document.createElement("span");
+  time.className = "msg-time";
+  time.textContent = formatTime();
 
   const meta = document.createElement("div");
-  meta.classList.add("message-meta");
-  meta.textContent = formatTime(new Date());
+  meta.className = "msg-meta";
+  meta.appendChild(copyBtn);
+  meta.appendChild(time);
 
-  if (type.includes("user")) {
-    wrapper.appendChild(bubble);
-    wrapper.appendChild(avatar);
-    bubble.appendChild(meta);
-  } else {
-    wrapper.appendChild(avatar);
-    const inner = document.createElement("div");
-    inner.style.flex = "1";
-    inner.appendChild(bubble);
-
-    // Copy button for bot messages
-    if (!type.includes("error")) {
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "copy-btn";
-      copyBtn.title = "Copy response";
-      copyBtn.innerHTML = '<i class="ti ti-copy"></i>';
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard.writeText(text).then(() => {
-          copyBtn.innerHTML = '<i class="ti ti-check"></i>';
-          setTimeout(() => { copyBtn.innerHTML = '<i class="ti ti-copy"></i>'; }, 1500);
-        });
-      });
-      bubble.appendChild(copyBtn);
-    }
-
-    bubble.appendChild(meta);
-    inner.appendChild(bubble);
-    wrapper.appendChild(inner);
-  }
-
-  chatBox.insertBefore(wrapper, typingEl);
+  wrap.appendChild(bubble);
+  wrap.appendChild(meta);
+  row.appendChild(avatar);
+  row.appendChild(wrap);
+  chat.appendChild(row);
   scrollToBottom();
+  saveChatHistory();
 }
 
 // ── Typing Indicator ─────────────────────────────────────────
 function showTyping() {
-  if (typingEl) {
-    typingEl.style.display = "flex";
-    scrollToBottom();
-  }
+  removeTyping();
+  const row = document.createElement("div");
+  row.className = "message-row bot-row";
+  row.id = "typing-row";
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar bot-avatar";
+  avatar.textContent = "AI";
+
+  const bubble = document.createElement("div");
+  bubble.className = "message bot-message typing-bubble";
+  bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  chat.appendChild(row);
+  scrollToBottom();
 }
 
-function hideTyping() {
-  if (typingEl) typingEl.style.display = "none";
+function hideTyping() { removeTyping(); }
+function removeTyping() {
+  document.getElementById("typing-row")?.remove();
 }
 
 // ── Scroll ───────────────────────────────────────────────────
 function scrollToBottom() {
-  chatBox.scrollTop = chatBox.scrollHeight;
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // ── Send Button State ────────────────────────────────────────
 function setSendState(enabled) {
   if (sendBtn) {
     sendBtn.disabled = !enabled;
-    sendBtn.style.opacity = enabled ? "1" : "0.5";
+    sendBtn.textContent = enabled ? "Send" : "…";
   }
 }
 
-// ── Chat History (localStorage) ──────────────────────────────
-function saveChatHistory() {
-  try {
-    const messages = [...chatBox.querySelectorAll(".message-wrapper")].map((w) => ({
-      type: w.classList.contains("user-wrapper") ? "user" : "bot",
-      text: w.querySelector(".message")?.innerText || "",
-    }));
-    localStorage.setItem("chatHistory_v2", JSON.stringify(messages));
-    localStorage.setItem("chatConversation_v2", JSON.stringify(conversationHistory));
-  } catch (e) {
-    console.warn("Could not save chat:", e);
-  }
-}
-
-function loadChatHistory() {
-  try {
-    const savedConv = localStorage.getItem("chatConversation_v2");
-    if (savedConv) conversationHistory = JSON.parse(savedConv);
-
-    const savedMsgs = localStorage.getItem("chatHistory_v2");
-    if (savedMsgs) {
-      const messages = JSON.parse(savedMsgs);
-      messages.forEach((m) => addMessage(m.text, m.type));
-    }
-  } catch (e) {
-    console.warn("Could not load chat:", e);
-  }
-}
-
-// ── Clear Chat ───────────────────────────────────────────────
-clearBtn?.addEventListener("click", () => {
-  if (!confirm("Clear all chat history?")) return;
-  chatBox.querySelectorAll(".message-wrapper").forEach((el) => el.remove());
-  conversationHistory = [];
-  localStorage.removeItem("chatHistory_v2");
-  localStorage.removeItem("chatConversation_v2");
-  addMessage("Chat cleared. How can I help you?", "bot");
-});
-
-// ── Export Chat ──────────────────────────────────────────────
+// ── Export ───────────────────────────────────────────────────
 exportBtn?.addEventListener("click", () => {
-  const lines = [...chatBox.querySelectorAll(".message-wrapper")].map((w) => {
-    const role = w.classList.contains("user-wrapper") ? "You" : "AI";
-    const text = w.querySelector(".message")?.innerText?.replace(/\n+/g, " ").trim() || "";
-    return `[${role}]: ${text}`;
+  const rows = [...chat.querySelectorAll(".message-row")];
+  const lines = rows.map((row) => {
+    const isUser = row.classList.contains("user-row");
+    const text = row.querySelector(".message")?.innerText?.trim() || "";
+    return `[${isUser ? "You" : "AI"}]: ${text}`;
   });
-
-  const content = `Chat Export — ${new Date().toLocaleString()}\n${"─".repeat(40)}\n\n${lines.join("\n\n")}`;
+  const content = `AI Productivity Assistant — Chat Export\n${new Date().toLocaleString()}\n${"─".repeat(50)}\n\n${lines.join("\n\n")}`;
   const blob = new Blob([content], { type: "text/plain" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `chat-export-${Date.now()}.txt`;
+  a.download = `chat-${Date.now()}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
 });
@@ -277,47 +251,56 @@ if (SpeechRecognition && voiceBtn) {
   recognition.continuous = false;
   recognition.interimResults = false;
 
-  recognition.onstart = () => {
-    voiceBtn.classList.add("active");
-    voiceBtn.title = "Listening…";
-  };
-
+  recognition.onstart  = () => { voiceBtn.textContent = "🔴"; voiceBtn.title = "Listening…"; };
+  recognition.onend    = () => { voiceBtn.textContent = "🎤"; voiceBtn.title = "Voice input"; };
+  recognition.onerror  = () => { voiceBtn.textContent = "🎤"; };
   recognition.onresult = (e) => {
-    const transcript = e.results[0][0].transcript;
-    userInput.value = transcript;
-    updateCharCount();
-    userInput.focus();
+    prompt.value = e.results[0][0].transcript;
+    autoResize();
+    prompt.focus();
   };
 
-  recognition.onerror = (e) => {
-    console.warn("Voice error:", e.error);
-    voiceBtn.classList.remove("active");
-    voiceBtn.title = "Voice input";
-  };
-
-  recognition.onend = () => {
-    voiceBtn.classList.remove("active");
-    voiceBtn.title = "Voice input";
-  };
-
+  voiceBtn.textContent = "🎤";
+  voiceBtn.title = "Voice input";
   voiceBtn.addEventListener("click", () => {
-    try { recognition.start(); } catch (e) { console.warn("Recognition already active"); }
+    try { recognition.start(); } catch (e) {}
   });
 } else if (voiceBtn) {
+  voiceBtn.textContent = "🎤";
   voiceBtn.disabled = true;
-  voiceBtn.title = "Voice not supported in this browser";
+  voiceBtn.title = "Voice not supported";
   voiceBtn.style.opacity = "0.4";
 }
 
-// ── Helpers ──────────────────────────────────────────────────
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+// ── localStorage ─────────────────────────────────────────────
+function saveChatHistory() {
+  try {
+    const rows = [...chat.querySelectorAll(".message-row")];
+    const msgs = rows.map((r) => ({
+      type: r.classList.contains("user-row") ? "user" : "bot",
+      text: r.querySelector(".message")?.innerText?.trim() || "",
+    }));
+    localStorage.setItem("ai_chat_v3", JSON.stringify(msgs));
+    localStorage.setItem("ai_conv_v3", JSON.stringify(conversationHistory));
+  } catch (e) {}
 }
 
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function loadChatHistory() {
+  try {
+    const savedConv = localStorage.getItem("ai_conv_v3");
+    if (savedConv) conversationHistory = JSON.parse(savedConv);
+
+    const savedMsgs = localStorage.getItem("ai_chat_v3");
+    if (savedMsgs) {
+      JSON.parse(savedMsgs).forEach((m) => {
+        if (m.type === "user") addUserMessage(m.text);
+        else addBotMessage(m.text);
+      });
+    }
+  } catch (e) {}
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function formatTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
