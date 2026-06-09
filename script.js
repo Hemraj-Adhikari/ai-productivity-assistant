@@ -13,6 +13,7 @@ const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
 const API_URL       = "https://api.anthropic.com/v1/messages";
+const API_KEY       = "YOUR_API_KEY_HERE"; // 🔑 Replace with your Anthropic API key
 const MODEL         = "claude-sonnet-4-20250514";
 const MAX_TOKENS    = 1024;
 const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
@@ -86,7 +87,12 @@ async function askClaude(message) {
   try {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: MAX_TOKENS,
