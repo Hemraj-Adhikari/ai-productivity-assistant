@@ -1,17 +1,20 @@
-# ai-productivity-assistant
- How to Use
-Open project in browser
-Add your daily tasks
-Mark them as completed when done
-Stay productive 
- Contributing
+#  AI Productivity Assistant
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+![GitHub stars](https://img.shields.io/github/stars/Hemraj-Adhikari/ai-productivity-assistant?style=social)
 
- License
+![GitHub forks](https://img.shields.io/github/forks/Hemraj-Adhikari/ai-productivity-assistant?style=social)
 
-This project is licensed under the MIT License.
+A modern AI-powered assistant built using HTML, CSS and JavaScript.
 
- Support
+## Features
 
-If you like this project, please give a  on GitHub!
+-  Voice Input
+-  Chat History
+-  Markdown Rendering
+-  Dark Mode
+-  Responsive UI
+-  AI Assistant
+
+## Live Demo
+
+https://hemraj-adhikari.github.io/ai-productivity-assistant/
