@@ -1,6 +1,6 @@
 // ============================================================
 //  AI Productivity Assistant — script.js
-//  Uses Google Gemini API (Free Tier) — GitHub Pages compatible
+//  Using Google Gemini API (Free Tier)
 // ============================================================
 
 // ── DOM References ───────────────────────────────────────────
@@ -12,14 +12,14 @@ const exportBtn = document.getElementById("exportBtn");
 const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
-// 🔑 Replace with your Gemini API key from https://aistudio.google.com/app/apikey
-const API_KEY       = "YOUR_GEMINI_API_KEY_HERE";
+// ⚠️  PASTE YOUR NEW API KEY HERE (revoke the old one first!)
+const API_KEY       = "AQ.Ab8RN6J6bh_JpYOsSswRUzYhogKTEHrf733py26HsefsZwvPLw";
 const MODEL         = "gemini-1.5-flash";
 const API_URL       = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
 
 // ── State ────────────────────────────────────────────────────
-let conversationHistory = [];   // [{ role: "user"|"model", parts: [{ text }] }]
+let conversationHistory = [];
 let isLoading           = false;
 let isDarkMode          = localStorage.getItem("theme") === "dark";
 
@@ -82,12 +82,13 @@ async function askGemini(message) {
   setSendState(false);
   showTyping();
 
-  // ✅ Correct Gemini format: role must be "user" or "model", parts must be array of { text }
+  // Add user message to history (Gemini format: role + parts)
   conversationHistory.push({
     role: "user",
     parts: [{ text: message }]
   });
 
+  // Build request body
   const requestBody = {
     system_instruction: {
       parts: [{ text: SYSTEM_PROMPT }]
@@ -102,22 +103,21 @@ async function askGemini(message) {
   try {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json"
+      },
       body: JSON.stringify(requestBody)
     });
 
-    const data = await response.json();
-
-    // ✅ Check for API-level errors returned in JSON
     if (!response.ok) {
-      const errMsg = data?.error?.message || `HTTP ${response.status}`;
-      throw new Error(errMsg);
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${response.status}`);
     }
 
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!reply) throw new Error("Empty response from Gemini.");
+    const data = await response.json();
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
 
-    // ✅ Gemini assistant role is "model", not "assistant"
+    // Add model reply to history (Gemini uses "model" not "assistant")
     conversationHistory.push({
       role: "model",
       parts: [{ text: reply }]
@@ -129,19 +129,9 @@ async function askGemini(message) {
 
   } catch (error) {
     hideTyping();
-    // Remove the user message we pushed since the request failed
+    addBotMessage(`⚠️ **Error:** ${error.message}`);
+    // Remove the last user message from history on error
     conversationHistory.pop();
-
-    let userFriendlyMsg = error.message;
-
-    // ✅ Helpful hints for common errors
-    if (error.message.includes("Failed to fetch")) {
-      userFriendlyMsg = "Network error — check your internet connection or API key CORS settings.";
-    } else if (error.message.toLowerCase().includes("api key") || error.message.includes("400")) {
-      userFriendlyMsg = "Invalid API key. Please update API_KEY in script.js with a valid Gemini key from https://aistudio.google.com/app/apikey";
-    }
-
-    addBotMessage(`⚠️ **Error:** ${userFriendlyMsg}`);
   } finally {
     isLoading = false;
     setSendState(true);
@@ -188,6 +178,7 @@ function addBotMessage(text) {
   bubble.className = "message bot-message";
   bubble.innerHTML = marked.parse(text);
 
+  // Copy button
   const copyBtn = document.createElement("button");
   copyBtn.className = "copy-btn";
   copyBtn.textContent = "Copy";
@@ -237,8 +228,10 @@ function showTyping() {
   scrollToBottom();
 }
 
-function hideTyping()  { removeTyping(); }
-function removeTyping() { document.getElementById("typing-row")?.remove(); }
+function hideTyping() { removeTyping(); }
+function removeTyping() {
+  document.getElementById("typing-row")?.remove();
+}
 
 // ── Scroll ───────────────────────────────────────────────────
 function scrollToBottom() {
