@@ -1,7 +1,6 @@
 // ============================================================
 //  AI Productivity Assistant — script.js
-//  Using Google Gemini API (Free Tier)
-//  Matches: #chat, #prompt, #sendBtn, #themeBtn, #exportBtn, #voiceBtn
+//  Uses Google Gemini API (Free Tier) — GitHub Pages compatible
 // ============================================================
 
 // ── DOM References ───────────────────────────────────────────
@@ -13,13 +12,14 @@ const exportBtn = document.getElementById("exportBtn");
 const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
-const API_KEY       = "AIzaSyCdtRygwuTZwmCOl77MQgn6ChhVI9RCG30"; // 🔑 Paste your Gemini API key here
+// 🔑 Replace with your Gemini API key from https://aistudio.google.com/app/apikey
+const API_KEY       = "YOUR_GEMINI_API_KEY_HERE";
 const MODEL         = "gemini-1.5-flash";
 const API_URL       = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
 
 // ── State ────────────────────────────────────────────────────
-let conversationHistory = [];
+let conversationHistory = [];   // [{ role: "user"|"model", parts: [{ text }] }]
 let isLoading           = false;
 let isDarkMode          = localStorage.getItem("theme") === "dark";
 
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ── Welcome ──────────────────────────────────────────────────
 function addWelcomeMessage() {
   if (chat.querySelectorAll(".message-row").length === 0) {
-    addBotMessage(" Hi! I'm your AI Productivity Assistant Design and Devloped By Hemraj Adhikari. Ask me anything — I remember our conversation context.");
+    addBotMessage("👋 Hi! I'm your AI Productivity Assistant, designed and developed by Hemraj Adhikari. Ask me anything — I remember our conversation context.");
   }
 }
 
@@ -82,13 +82,12 @@ async function askGemini(message) {
   setSendState(false);
   showTyping();
 
-  // Add user message to history
+  // ✅ Correct Gemini format: role must be "user" or "model", parts must be array of { text }
   conversationHistory.push({
     role: "user",
     parts: [{ text: message }]
   });
 
-  // Build request body
   const requestBody = {
     system_instruction: {
       parts: [{ text: SYSTEM_PROMPT }]
@@ -103,21 +102,22 @@ async function askGemini(message) {
   try {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody)
     });
 
+    const data = await response.json();
+
+    // ✅ Check for API-level errors returned in JSON
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `HTTP ${response.status}`);
+      const errMsg = data?.error?.message || `HTTP ${response.status}`;
+      throw new Error(errMsg);
     }
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) throw new Error("Empty response from Gemini.");
 
-    // Add assistant reply to history
+    // ✅ Gemini assistant role is "model", not "assistant"
     conversationHistory.push({
       role: "model",
       parts: [{ text: reply }]
@@ -129,8 +129,19 @@ async function askGemini(message) {
 
   } catch (error) {
     hideTyping();
-    addBotMessage(`⚠️ **Error:** ${error.message}`);
+    // Remove the user message we pushed since the request failed
     conversationHistory.pop();
+
+    let userFriendlyMsg = error.message;
+
+    // ✅ Helpful hints for common errors
+    if (error.message.includes("Failed to fetch")) {
+      userFriendlyMsg = "Network error — check your internet connection or API key CORS settings.";
+    } else if (error.message.toLowerCase().includes("api key") || error.message.includes("400")) {
+      userFriendlyMsg = "Invalid API key. Please update API_KEY in script.js with a valid Gemini key from https://aistudio.google.com/app/apikey";
+    }
+
+    addBotMessage(`⚠️ **Error:** ${userFriendlyMsg}`);
   } finally {
     isLoading = false;
     setSendState(true);
@@ -177,7 +188,6 @@ function addBotMessage(text) {
   bubble.className = "message bot-message";
   bubble.innerHTML = marked.parse(text);
 
-  // Copy button
   const copyBtn = document.createElement("button");
   copyBtn.className = "copy-btn";
   copyBtn.textContent = "Copy";
@@ -227,10 +237,8 @@ function showTyping() {
   scrollToBottom();
 }
 
-function hideTyping() { removeTyping(); }
-function removeTyping() {
-  document.getElementById("typing-row")?.remove();
-}
+function hideTyping()  { removeTyping(); }
+function removeTyping() { document.getElementById("typing-row")?.remove(); }
 
 // ── Scroll ───────────────────────────────────────────────────
 function scrollToBottom() {
