@@ -12,8 +12,8 @@ const exportBtn = document.getElementById("exportBtn");
 const voiceBtn  = document.getElementById("voiceBtn");
 
 // ── Config ───────────────────────────────────────────────────
-// ⚠️  PASTE YOUR NEW API KEY HERE (revoke the old one first!)
-const API_KEY       = "AQ.Ab8RN6J6bh_JpYOsSswRUzYhogKTEHrf733py26HsefsZwvPLw";
+// ✅ Paste your Gemini API key below (starts with AIzaSy...)
+const API_KEY       = "AQ.Ab8RN6Jus_GVlcBywA1T-6bqy8FypFHrEbjYsLfWMJXWUyz3Lw";
 const MODEL         = "gemini-1.5-flash";
 const API_URL       = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const SYSTEM_PROMPT = "You are a helpful, friendly AI productivity assistant. Format responses using markdown where helpful.";
